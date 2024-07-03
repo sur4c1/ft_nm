@@ -6,7 +6,7 @@
 /*   By: yyyyyyyy <yyyyyyyy@42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/02 13:46:25 by yyyyyyyy          #+#    #+#             */
-/*   Updated: 2024/07/02 11:34:08 by yyyyyyyy         ###   ########.fr       */
+/*   Updated: 2024/07/03 12:29:44 by yyyyyyyy         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,7 +26,14 @@ typedef enum e_error_codes {
 	MMAP_ERROR,
 	MALFORMED_FILE,
 	EMPTY_FILE,
-	MALLOC_ERROR
+	MALLOC_ERROR,
+	FILE_TOO_SMALL,
+	WRONG_MAGIC_NUMBER,
+	WEIRDLY_PLACE_PROGRAMS_HEAD,
+	NO_PROGRAMS,
+	WEIRDLY_PLACE_SECTIONS_HEAD,
+	NO_SECTIONS,
+	WRONG_CLASS,
 }	t_error_code;
 
 enum e_ei_class {
