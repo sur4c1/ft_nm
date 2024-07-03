@@ -6,7 +6,7 @@
 /*   By: yyyyyyyy <yyyyyyyy@42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/21 11:39:09 by yyyyyyyy          #+#    #+#             */
-/*   Updated: 2024/07/02 12:55:21 by yyyyyyyy         ###   ########.fr       */
+/*   Updated: 2024/07/03 12:44:10 by yyyyyyyy         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -123,10 +123,10 @@ char load_type(t_nm *nm, t_symbol sym)
 	}
 	else if (shndx == SHN_UNDEF)
 		c = 'U';
-	else if (shndx == SHN_ABS)
-		c = 'a'; // TODO: A or a?
 	else { // Real section and bind is GLOBAL or LOCAL
-		if (section._64bits.type == SHT_NOBITS)
+		if (shndx == SHN_ABS)
+			c = 'a';
+		else if (section._64bits.type == SHT_NOBITS)
 			c = 'b';
 		else if (section._64bits.flags & SHF_EXECINSTR)
 			c = 't';
@@ -134,6 +134,8 @@ char load_type(t_nm *nm, t_symbol sym)
 			c = 'd';
 		else if (section._64bits.flags & SHF_ALLOC)
 			c = 'r';
+		else if (section._64bits.flags & SHF_STRINGS)
+			c = 'n';
 		if (bind == STB_GLOBAL)
 			c = ft_toupper(c);
 	}
@@ -238,10 +240,15 @@ void	print_symbols(t_nm *nm)
 		if (!symbols[i].should_skip)
 		{
 			char c = symbols[i].type;
-			if (symbols[i]._64bits.value != 0 || c == 'u' || c == 'a' || c == 'b' || c != 'U' || c == 't' || c == 'T' || c == 'r')
-				ft_printf("%016lx %c %s\n", symbols[i]._64bits.value, c, symbols[i].name);
-			else
+			if ((symbols[i]._64bits.value == 0 || c == 'U')
+					&& c != 'a'
+					&& c != 'b'
+					&& c != 'T'
+					&& c != 't'
+			)
 				ft_printf("%16c %c %s\n", ' ', c, symbols[i].name);
+			else
+				ft_printf("%016lx %c %s\n", symbols[i]._64bits.value, c, symbols[i].name);
 		}
 	}
 	if (!total_symbols)

@@ -6,7 +6,7 @@
 /*   By: yyyyyyyy <yyyyyyyy@42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/21 12:16:57 by yyyyyyyy          #+#    #+#             */
-/*   Updated: 2024/06/25 10:38:06 by yyyyyyyy         ###   ########.fr       */
+/*   Updated: 2024/07/03 12:44:27 by yyyyyyyy         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -78,9 +78,70 @@ void	load_sections(t_nm *nm)
 	while (i < nm->elf.header._32bits.shnum)
 	{
 		ft_memcpy(nm->elf.sections + i, nm->file.raw_data + nm->elf.header._32bits.shoff + i * nm->elf.header._32bits.shentsize, nm->elf.header._32bits.shentsize);
+		nm->elf.sections[i].name = load_name(nm, nm->elf.sections[i]._32bits.name, nm->elf.sections[nm->elf.header._32bits.shstrndx]._32bits.offset);
 		i++;
 	}
 }
+
+static
+char load_type(t_nm *nm, t_symbol sym)
+{
+	char		type;
+	char		bind;
+	char		visibility;
+	uint16_t	shndx;
+	char		c;
+	t_section	section;
+
+	type = sym._32bits.info & 0xf;
+	bind = sym._32bits.info >> 4;
+	visibility = sym._32bits.other & 0x3;
+	shndx = sym._32bits.shndx;
+	if (shndx != SHN_UNDEF &&
+		shndx != SHN_LORESERVE &&
+		shndx != SHN_LOPROC &&
+		shndx != SHN_HIPROC &&
+		shndx != SHN_ABS &&
+		shndx != SHN_COMMON &&
+		shndx != SHN_HIRESERVE)
+	section = nm->elf.sections[shndx];
+	c = '?';
+	if (bind == STB_WEAK)
+	{
+		if (type == STT_OBJECT)
+		{
+			c = 'V';
+			if (shndx == SHN_UNDEF)
+				c = 'v';
+		}
+		else
+		{
+			c = 'W';
+			if (shndx == SHN_UNDEF)
+				c = 'w';
+		}
+	}
+	else if (shndx == SHN_UNDEF)
+		c = 'U';
+	else { // Real section and bind is GLOBAL or LOCAL
+		if (shndx == SHN_ABS)
+			c = 'a';
+		else if (section._32bits.type == SHT_NOBITS)
+			c = 'b';
+		else if (section._32bits.flags & SHF_EXECINSTR)
+			c = 't';
+		else if (section._32bits.flags & SHF_WRITE)
+			c = 'd';
+		else if (section._32bits.flags & SHF_ALLOC)
+			c = 'r';
+		else if (section._32bits.flags & SHF_STRINGS)
+			c = 'n';
+		if (bind == STB_GLOBAL)
+			c = ft_toupper(c);
+	}
+	return (c);
+}
+
 static
 void	load_symbols(t_nm *nm)
 {
@@ -92,7 +153,10 @@ void	load_symbols(t_nm *nm)
 	i = 0;
 	while (i < nb_sections)
 	{
-		if (nm->elf.sections[i]._32bits.type == SHT_SYMTAB)
+		if (
+			nm->elf.sections[i]._32bits.type == SHT_SYMTAB
+			// || nm->elf.sections[i]._32bits.type == SHT_DYNSYM
+		)
 		{
 			if (nm->elf.sections[i]._32bits.offset + nm->elf.sections[i]._32bits.size > nm->file.size)
 			{
@@ -109,14 +173,21 @@ void	load_symbols(t_nm *nm)
 						+ ii * nm->elf.sections[i]._32bits.entsize,
 					nm->elf.sections[i]._32bits.entsize
 				);
-				ft_printf("apres shndx: %d\n", nm->elf.sections[i].symbols[ii]._32bits.shndx);
-				nm->elf.sections[i].symbols[ii].name
-					= load_name(
-						nm, nm->elf.sections[i].symbols[ii]._32bits.name,
-						nm->elf.sections[nm->elf.sections[i]._32bits.link]
-							._32bits.offset
-					);
-
+				if ((nm->elf.sections[i].symbols[ii]._32bits.info & 0xf) == STT_SECTION)
+					nm->elf.sections[i].symbols[ii].name
+						= load_name(
+							nm,
+							nm->elf.sections[nm->elf.sections[i].symbols[ii]._32bits.shndx]._32bits.name,
+							nm->elf.sections[nm->elf.header._32bits.shstrndx]._32bits.offset
+						);
+				else
+					nm->elf.sections[i].symbols[ii].name
+						= load_name(
+							nm, nm->elf.sections[i].symbols[ii]._32bits.name,
+							nm->elf.sections[nm->elf.sections[i]._32bits.link]
+								._32bits.offset
+						);
+				nm->elf.sections[i].symbols[ii].type = load_type(nm, nm->elf.sections[i].symbols[ii]);
 				ii++;
 			}
 		}
@@ -163,95 +234,25 @@ void	print_symbols(t_nm *nm)
 		quick_sort(symbols, 0, total_symbols - 1, rev_compare);
 	else
 		quick_sort(symbols, 0, total_symbols - 1, compare);
-	// TODO: filter symbols
-	i = 1;
-	ft_printf("total_symbols: %d\n", total_symbols);
-	while (i < total_symbols)
+	i = 0;
+	while (++i < total_symbols)
 	{
 		if (!symbols[i].should_skip)
 		{
-			char		symbol_type;
-			char		symbol_bind;
-			char		symbol_visibility;
-			uint16_t	shndx;
-			char		c;
-			// char		*section_name;
-
-			symbol_type = symbols[i]._32bits.info & 0xf;
-			symbol_bind = symbols[i]._32bits.info >> 4;
-			symbol_visibility = symbols[i]._32bits.other & 0x3;
-			shndx = symbols[i]._32bits.shndx;
-			if (symbol_type == STT_NOTYPE)
-				c = '?';
-			else if (symbol_type == STT_OBJECT)
-				c = 'D';
-			else if (symbol_type == STT_FUNC)
-				c = 'T';
-			else if (symbol_type == STT_SECTION)
-				c = 'N';
-			else if (symbol_type == STT_FILE)
-				c = 'N';
-			else if (symbol_type == STT_COMMON)
-				c = 'C';
-			else if (symbol_type == STT_TLS)
-				c = 'D';
-			else
-				c = '?';
-			if (shndx == SHN_ABS)
-				c = 'A';
-			else if (shndx == SHN_COMMON)
-				c = 'C';
-			else if (symbol_bind == STB_WEAK)
-			{
-				if (symbol_type == STT_OBJECT)
-				{
-					if (shndx != SHN_UNDEF)
-						c = 'V';
-					else
-						c = 'v';
-				}
-				else
-				{
-					if (shndx != SHN_UNDEF)
-						c = 'W';
-					else
-						c = 'w';
-				}
-			}
-			else if (shndx == SHN_UNDEF)
-				c = 'U';
-			else {
-				ft_printf("shndx: %x\n", shndx);
-				ft_printf("symbol name: %s\n", symbols[i].name);
-				ft_printf("symbol value: %x\n", symbols[i]._32bits.value);
-				uint32_t section_type = nm->elf.sections[shndx]._32bits.type;
-				if (section_type == SHT_NOBITS)
-					c = 'B';
-				else if (section_type == SHT_PROGBITS || section_type == SHT_NOTE)
-				{
-					uint32_t section_flags = nm->elf.sections[shndx]._32bits.flags;
-					if (section_flags & SHF_EXECINSTR) {
-						c = 'T';  // Text (code) section
-					} else if (section_flags & SHF_ALLOC) {
-						if (section_flags & SHF_WRITE) {
-							c = 'D';
-						} else {
-							c = 'R';
-						}
-					}
-				}
-			}
-			if (symbol_bind == STB_LOCAL && c != 'W' && c != 'V')
-				c = ft_tolower(c);
-			if (i == 1)
-				c = 'a';
-			if ((symbols[i]._32bits.value != 0 || c == 'u' || c == 'a' || c == 'b') && c != 'U')
-				ft_printf("%08x %c %s\n", symbols[i]._32bits.value, c, symbols[i].name);
-			else
+			char c = symbols[i].type;
+			if ((symbols[i]._32bits.value == 0 || c == 'U')
+					&& c != 'a'
+					&& c != 'b'
+					&& c != 't'
+					&& c != 'T'
+			)
 				ft_printf("%8c %c %s\n", ' ', c, symbols[i].name);
+			else
+				ft_printf("%08x %c %s\n", symbols[i]._32bits.value, c, symbols[i].name);
 		}
-		i++;
 	}
+	if (!total_symbols)
+		ft_dprintf(STDIN_FILENO, "ft_nm: %s: no symbols\n", nm->input.files.data[0]);
 	free(symbols);
 }
 

@@ -6,7 +6,7 @@
 /*   By: yyyyyyyy <yyyyyyyy@42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/05 10:35:19 by yyyyyyyy          #+#    #+#             */
-/*   Updated: 2024/06/25 10:38:42 by yyyyyyyy         ###   ########.fr       */
+/*   Updated: 2024/07/03 12:43:42 by yyyyyyyy         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -61,21 +61,33 @@ void	load_elf_header(t_nm *nm)
 {
 	if (nm->file.size < sizeof (t_indent))
 	{
-		nm->file.status = MALFORMED_FILE;
+		nm->file.status = FILE_TOO_SMALL;
 		return ;
 	}
 	ft_memcpy(&nm->elf.header.indent, nm->file.raw_data, sizeof (t_indent));
 	if (nm->elf.header.indent.magic != 0x464c457f)
 	{
-		nm->file.status = MALFORMED_FILE;
+		nm->file.status = WRONG_MAGIC_NUMBER;
 		return ;
 	}
 	if (nm->elf.header.indent.class == EI_CLASS_32BIT && nm->file.size >= sizeof (t_indent) + sizeof (t_32bits_header))
+	{
 		ft_memmove(&nm->elf.header._32bits, nm->file.raw_data + sizeof (t_indent), sizeof (t_32bits_header));
+		if (nm->elf.header._32bits.phoff < nm->elf.header._32bits.ehsize && nm->elf.header._32bits.phnum != 0)
+			nm->file.status = WEIRDLY_PLACE_PROGRAMS_HEAD;
+		if (nm->elf.header._32bits.shoff < nm->elf.header._32bits.ehsize && nm->elf.header._32bits.shnum != 0)
+			nm->file.status = WEIRDLY_PLACE_SECTIONS_HEAD;
+	}
 	else if (nm->elf.header.indent.class == EI_CLASS_64BIT && nm->file.size >= sizeof (t_indent) + sizeof (t_64bits_header))
+	{
 		ft_memmove(&nm->elf.header._64bits, nm->file.raw_data + sizeof (t_indent), sizeof (t_64bits_header));
+		if (nm->elf.header._64bits.phoff < nm->elf.header._64bits.ehsize && nm->elf.header._64bits.phnum != 0)
+			nm->file.status = WEIRDLY_PLACE_PROGRAMS_HEAD;
+		if (nm->elf.header._64bits.shoff < nm->elf.header._64bits.ehsize && nm->elf.header._64bits.shnum != 0)
+			nm->file.status = WEIRDLY_PLACE_SECTIONS_HEAD;
+	}
 	else
-		nm->file.status = MALFORMED_FILE;
+		nm->file.status = WRONG_CLASS;
 }
 
 int	analyze_file(char *file_path, t_nm nm)
@@ -83,7 +95,9 @@ int	analyze_file(char *file_path, t_nm nm)
 	nm.file = load_file(file_path);
 	if (nm.file.status != SUCCESS)
 		return 1;
+	ft_dprintf(STDERR_FILENO, "file loaded\n");
 	load_elf_header(&nm);
+	ft_dprintf(STDERR_FILENO, "header status %d\n", nm.file.status);
 	if (nm.file.status != SUCCESS)
 	{
 		ft_putstr_fd("ft_nm: ", STDIN_FILENO);
@@ -92,6 +106,7 @@ int	analyze_file(char *file_path, t_nm nm)
 		munmap(nm.file.raw_data, nm.file.size);
 		return 1;
 	}
+	ft_dprintf(STDERR_FILENO, "header loaded\n");
 	if (nm.elf.header.indent.class == EI_CLASS_32BIT)
 		return analyze_file_32bits(&nm, file_path);
 	else if (nm.elf.header.indent.class == EI_CLASS_64BIT)
