@@ -6,7 +6,7 @@
 /*   By: yyyyyyyy <yyyyyyyy@42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/21 12:16:57 by yyyyyyyy          #+#    #+#             */
-/*   Updated: 2024/07/04 11:09:46 by yyyyyyyy         ###   ########.fr       */
+/*   Updated: 2024/07/04 11:31:59 by yyyyyyyy         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -190,8 +190,8 @@ void	load_symbols(t_nm *nm)
 				int	is_undef = nm->elf.sections[i].symbols[ii]._32bits.shndx == SHN_UNDEF;
 				int	is_extern = (nm->elf.sections[i].symbols[ii]._32bits.info >> 4) == STB_GLOBAL
 					|| (nm->elf.sections[i].symbols[ii]._32bits.info >> 4) == STB_WEAK;
-				int is_debug = (nm->elf.sections[i].symbols[ii]._32bits.info & 0x4) == STT_FILE
-					&& (nm->elf.sections[i].symbols[ii]._32bits.info >> 4) == STB_LOCAL;
+				int is_debug = (nm->elf.sections[i].symbols[ii]._32bits.info & 0xf) == STT_FILE
+					|| (nm->elf.sections[i].symbols[ii]._32bits.info & 0xf) == STT_SECTION;
 				if (!nm->input.debug_symbols && is_debug)
 					nm->elf.sections[i].symbols[ii].should_skip = 1;
 				if (nm->input.extern_only && !is_extern)
