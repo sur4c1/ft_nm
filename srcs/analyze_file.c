@@ -6,7 +6,7 @@
 /*   By: yyyyyyyy <yyyyyyyy@42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/05 10:35:19 by yyyyyyyy          #+#    #+#             */
-/*   Updated: 2024/07/03 12:43:42 by yyyyyyyy         ###   ########.fr       */
+/*   Updated: 2024/07/04 10:47:40 by yyyyyyyy         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -95,9 +95,7 @@ int	analyze_file(char *file_path, t_nm nm)
 	nm.file = load_file(file_path);
 	if (nm.file.status != SUCCESS)
 		return 1;
-	ft_dprintf(STDERR_FILENO, "file loaded\n");
 	load_elf_header(&nm);
-	ft_dprintf(STDERR_FILENO, "header status %d\n", nm.file.status);
 	if (nm.file.status != SUCCESS)
 	{
 		ft_putstr_fd("ft_nm: ", STDIN_FILENO);
@@ -106,7 +104,6 @@ int	analyze_file(char *file_path, t_nm nm)
 		munmap(nm.file.raw_data, nm.file.size);
 		return 1;
 	}
-	ft_dprintf(STDERR_FILENO, "header loaded\n");
 	if (nm.elf.header.indent.class == EI_CLASS_32BIT)
 		return analyze_file_32bits(&nm, file_path);
 	else if (nm.elf.header.indent.class == EI_CLASS_64BIT)

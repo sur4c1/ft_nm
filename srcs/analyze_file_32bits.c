@@ -6,7 +6,7 @@
 /*   By: yyyyyyyy <yyyyyyyy@42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/21 12:16:57 by yyyyyyyy          #+#    #+#             */
-/*   Updated: 2024/07/03 12:44:27 by yyyyyyyy         ###   ########.fr       */
+/*   Updated: 2024/07/04 11:02:01 by yyyyyyyy         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -188,6 +188,21 @@ void	load_symbols(t_nm *nm)
 								._32bits.offset
 						);
 				nm->elf.sections[i].symbols[ii].type = load_type(nm, nm->elf.sections[i].symbols[ii]);
+
+				int	is_undef = nm->elf.sections[i].symbols[ii]._32bits.shndx == SHN_UNDEF;
+				int	is_extern = (nm->elf.sections[i].symbols[ii]._32bits.info >> 4) == STB_GLOBAL
+					|| (nm->elf.sections[i].symbols[ii]._32bits.info >> 4) == STB_WEAK;
+				int is_debug = (nm->elf.sections[i].symbols[ii]._32bits.info & 0x4) == STT_FILE
+					&& (nm->elf.sections[i].symbols[ii]._32bits.info >> 4) == STB_LOCAL;
+				if (!nm->input.debug_symbols && is_debug)
+					nm->elf.sections[i].symbols[ii].should_skip = 1;
+				if (nm->input.extern_only && !is_extern)
+					nm->elf.sections[i].symbols[ii].should_skip = 1;
+				if (nm->input.undefined_only && !is_undef)
+					nm->elf.sections[i].symbols[ii].should_skip = 1;
+				if (ii == 0)
+					nm->elf.sections[i].symbols[ii].should_skip = 1;
+
 				ii++;
 			}
 		}
@@ -235,7 +250,7 @@ void	print_symbols(t_nm *nm)
 	else
 		quick_sort(symbols, 0, total_symbols - 1, compare);
 	i = 0;
-	while (++i < total_symbols)
+	while (i < total_symbols)
 	{
 		if (!symbols[i].should_skip)
 		{
@@ -250,6 +265,7 @@ void	print_symbols(t_nm *nm)
 			else
 				ft_printf("%08x %c %s\n", symbols[i]._32bits.value, c, symbols[i].name);
 		}
+		i++;
 	}
 	if (!total_symbols)
 		ft_dprintf(STDIN_FILENO, "ft_nm: %s: no symbols\n", nm->input.files.data[0]);
