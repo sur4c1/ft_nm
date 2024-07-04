@@ -6,7 +6,7 @@
 /*   By: yyyyyyyy <yyyyyyyy@42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/21 12:16:57 by yyyyyyyy          #+#    #+#             */
-/*   Updated: 2024/07/04 11:02:01 by yyyyyyyy         ###   ########.fr       */
+/*   Updated: 2024/07/04 11:09:46 by yyyyyyyy         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -88,14 +88,12 @@ char load_type(t_nm *nm, t_symbol sym)
 {
 	char		type;
 	char		bind;
-	char		visibility;
 	uint16_t	shndx;
 	char		c;
 	t_section	section;
 
 	type = sym._32bits.info & 0xf;
 	bind = sym._32bits.info >> 4;
-	visibility = sym._32bits.other & 0x3;
 	shndx = sym._32bits.shndx;
 	if (shndx != SHN_UNDEF &&
 		shndx != SHN_LORESERVE &&
